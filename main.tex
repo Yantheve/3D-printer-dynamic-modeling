@@ -1,0 +1,133 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{automata, positioning, arrows.meta}
+\title{mini project}
+\author{j.poulard Y.Chen }
+\date{October 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+\section{Physical Modelling}
+
+
+\subsection*{Q1.5: Nozzle Model}
+Inductor: $L_n$ \\ Resistor: $R_n$ \\Capacitor: $C_n$
+\\resistor voltage: $v_c$ \\capacitor voltage: $v_c$, since capacitor and resistor are connected in parallel
+\paragraph{modelling assumptions}
+\begin{itemize}
+\item uniform nozzle temperature $T_n(t)$
+\item constant electrical and thermal parameters
+\item combined heat loss to the environment and filament
+\item all ell electrical power dissipated in $R_n$ is transferred to the nozzle as heat.
+\end{itemize}
+
+\parahraph{variables and sign conventions}
+\begin{itemize}
+\item inductor current $i_L=i_n$, the positive direction of $i_n$ is from the input terminal towards the parallel branches. The voltage $v_c$ is defined as the potential of the upper node relative to the lower node.
+\end{itemize}
+
+inductor voltage drop:$v_L$
+\begin{equation}v_L=L_n\dot{i}_n\end{equation}
+the nozzle voltage: 
+\begin{equation}u_n=v_L+v_c\end{equation}
+
+the inductor current change rate:\begin{equation}\dot{i}_n=\frac{1}{L_n}\left(u_n-v_c\right)\label{eq:inductor current change rate}\end{equation}
+inductor current: $i_n$\\
+\begin{equation}i_n=i_c+i_R\end{equation}
+resistor current: $i_R$
+\begin{equation}i_R=\frac{v_c}{R_n}\end{equation}
+therefore, \begin{equation}i_n=C_n\dot{v}_c+\frac{v_c}{R_n}\end{equation}
+capacitor voltage change rate: \begin{equation}\dot{v}_c=\frac{1}{C_n}\left({i_n}-\frac{v_c}{R_n}\right)\label{eq:capacitor voltage change rate}\end{equation}
+heating power of resistor \begin{equation}P=\frac{v_c^2}{R_n}\end{equation}
+nozzle thermal losses: \begin{equation}P_\mathrm{loss}=\frac{T_n-T_e}{R_{t,n}}\end{equation}
+thermal energy \begin{equation}\dot{Q}=P-P_\mathrm{loss}\end{equation}
+temperature change rate \begin{equation}
+\dot{T}_n=\frac{P-P_\mathrm{loss}}{C_{t,n}}\end{equation}
+\begin{equation}
+\dot{T}_n=\frac{1}{C_{t,n}}\left(\frac{v_c^2}{R_n}-\frac{T_n-T_e}{R_{t,n}}\right)\label{eq:temperature change rate}\end{equation}
+
+since three differential equation equation~\eqref{eq:inductor current change rate}, ~\eqref{eq:capacitor voltage change rate},~\eqref{eq:temperature change rate}
+the state-space description of the form $\dot{x}_n=f_n\left(x_n,u_n\right)$ goes to $x_n=[{T_n},{i_n},{v_c}]^\top$
+\begin{equation}
+\dot{x}_n=
+\begin{bmatrix}
+    \dot{T}_n\\
+    \dot{i}_n\\
+    \dot{v}_c
+\end{bmatrix}=
+\begin{bmatrix}
+    \frac{1}{C_{t,n}}\left(\frac{v_c^2}{R_n}-\frac{T_n-T_e}{R_{t,n}}\right)\\
+    \frac{1}{L_n}\left(u_n-v_c\right)\\
+    \frac{1}{C_n}\left({i_n}-\frac{v_c}{R_n}\right)
+\end{bmatrix}
+\end{equation}
+
+
+
+
+
+\subsection*{Q1.6: Filament Cooling Model}
+
+\section{Finite State Machine}
+\subsection*{Q2.1: Filament Replacement}
+the event $C$ denotes a request to print a new colour, while the event $F$ indicates that the spool currently in use has run out of filament.\\Transition labels follow the format ``event/action''. The coordinates $(x_p,y_p)$ denote the wipe-tower location. The machine remains in its current state until the corresponding transition event occurs. Nozzle heating remains enabled during heating up and the return to the saved position.
+\begin{figure}[htbp]
+    \centering
+    \resizebox{\linewidth}{!}{%}
+        \begin{tikzpicture}[
+        >=stealth,
+        every state/.style={
+        minimum size=2.8cm,
+        text width =1.8cm,
+        align=center,
+        inner sep=0pt,
+      font=\small
+        },
+        initial text={}
+    ]
+        \node[state,initial](p0){$P_0$\\Printing};
+        \node[state,right=3.5cm of p0](p1)
+        {$P_1$\\Moving to\\wipe tower\\$(x_p,y_p)$};
+        \draw[->](p0)--node[above,align=center, font=\small]
+        {$C \lor F$ / stop printing;\\save current position}
+        (p1);
+        \node[state,right=3.5cm of p1](p2)
+        {$P_2$\\Wiping};
+        \draw[->](p1)--
+        node[above,align=center,
+        font=\small]
+        {arrived at\\$(x_p,y_p)$}
+        (p2);
+        \node[state,below=2.5cm of p2](p3)
+        {$P_3$\\Loading new\\filament};
+        \draw[->](p2)--node[right,align=left,font=\small]
+        {excess\\filament \\removed/\\switch off \\nozzle\\heating}
+        (p3);
+        \node[state,left=3.5cm of p3](p4)
+        {$P_4$\\Heating up};
+        \draw[->](p3)--node[above,align=center,font=\small]
+        {New filament loaded/\\switch on nozzle heating}
+        (p4);
+        \node[state, left=3.5cm of p4](p5)
+        {$P_5$\\Returning to\\saved position};
+        \draw[->](p4)--node[above, align=center, font=\small]
+        {desired temperature\\ reached/start moving to\\ saved position}
+        (p5);
+        \draw[->](p5)--node[left,align=right,font=\small]
+        {saved\\position\\ reached/\\resume\\printing}
+        (p0);
+    \end{tikzpicture}%
+    }
+    \caption{finite-state machine for filament replacement.}
+    \label{fig:filament-fsm}
+\end{figure}
+
+
+
+
+\end{document}
