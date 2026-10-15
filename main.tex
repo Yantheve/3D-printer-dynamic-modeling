@@ -13,7 +13,7 @@
 
 \section{Introduction}
 \section{Physical Modelling}
-
+Hi Julia, once you have the print-head velocity expressions or simulation results from Q1.4, could you share them with me? I’ll use them to calculate the deposition speed for Q1.6.
 
 \subsection*{Q1.5: Nozzle Model}
 Inductor: $L_n$ \\ Resistor: $R_n$ \\Capacitor: $C_n$
@@ -26,7 +26,7 @@ Inductor: $L_n$ \\ Resistor: $R_n$ \\Capacitor: $C_n$
 \item all ell electrical power dissipated in $R_n$ is transferred to the nozzle as heat.
 \end{itemize}
 
-\parahraph{variables and sign conventions}
+\paragraph{variables and sign conventions}
 \begin{itemize}
 \item inductor current $i_L=i_n$, the positive direction of $i_n$ is from the input terminal towards the parallel branches. The voltage $v_c$ is defined as the potential of the upper node relative to the lower node.
 \end{itemize}
@@ -35,7 +35,6 @@ inductor voltage drop:$v_L$
 \begin{equation}v_L=L_n\dot{i}_n\end{equation}
 the nozzle voltage: 
 \begin{equation}u_n=v_L+v_c\end{equation}
-
 the inductor current change rate:\begin{equation}\dot{i}_n=\frac{1}{L_n}\left(u_n-v_c\right)\label{eq:inductor current change rate}\end{equation}
 inductor current: $i_n$\\
 \begin{equation}i_n=i_c+i_R\end{equation}
@@ -50,7 +49,6 @@ temperature change rate \begin{equation}
 \dot{T}_n=\frac{P-P_\mathrm{loss}}{C_{t,n}}\end{equation}
 \begin{equation}
 \dot{T}_n=\frac{1}{C_{t,n}}\left(\frac{v_c^2}{R_n}-\frac{T_n-T_e}{R_{t,n}}\right)\label{eq:temperature change rate}\end{equation}
-
 since three differential equation equation~\eqref{eq:inductor current change rate}, ~\eqref{eq:capacitor voltage change rate},~\eqref{eq:temperature change rate}
 the state-space description of the form $\dot{x}_n=f_n\left(x_n,u_n\right)$ goes to $x_n=[{T_n},{i_n},{v_c}]^\top$
 \begin{equation}
@@ -72,10 +70,114 @@ the state-space description of the form $\dot{x}_n=f_n\left(x_n,u_n\right)$ goes
 
 
 \subsection*{Q1.6: Filament Cooling Model}
+\paragraph{geometry and modeling assumptions}
+Following the problem statement, the printed filament is assumed to have a square cross-section, with its lower face in contact with the heated plate. Consider a small segment of length $\Delta s$ along the filament path, with cross-sectional side length $a$. The filament temperature is denoted by $T(s,t)$ and is assumed to be uniform across each cross-section. At deposition, the filament temperature is assumed to equal the nozzle temperature.
+\begin{equation}V=a^2\Delta s\end{equation}
+
+
+\paragraph{thermal energy balance}
+thermal energy accumulation rate:
+\begin{equation}
+\dot{E}
+=c_p m \frac{\partial T}{\partial t}
+=c_p \rho a^2 \Delta s
+ \frac{\partial T}{\partial t}
+\label{eq: Edot}
+\end{equation}
+three heat transfer paths are:
+filament-air: convection
+filament-plate: conduction
+filament-filament: conduction
+the area contact to the plate and air
+\begin{equation}
+A_b=a\Delta s
+\qquad
+A_{\mathrm{air}}=3a\Delta s
+\end{equation}
+so firstly the convective heat transfer from the filament to air ($h_{air}$ is the heat transfer coefficient of air):
+\begin{equation}
+P_{air}
+=h_{air} A_{air} (T(s,t)-T_e)
+=h_{air} 3a \Delta s (T(s,t)-T_e)
+\label{eq: Pair}
+\end{equation}
+secondly, heat conduction between the filament and the plate is modelled using the effective thermal contact conductance per unit area $h_b$, $T_b$ is the print bed temperature: 
+\begin{equation}
+P_b
+=h_b A_b (T_b-T(s,t))
+=h_b a \Delta s (T_b-T(s,t))
+\label{eq:Pb}
+\end{equation}
+lastly, consider heat conduction along the filament between adjacent segments. For a segment extending from $s$ to $s+\Delta s$, define $P_{\mathrm{cond}}(s,t)$ as the heat transfer rate in the positive $s$ direction:
+\begin{equation}
+P_{\mathrm{cond}}
+=- k \frac{\partial T}{\partial s} A
+\end{equation}
+\begin{equation}
+P_f
+=P_{\mathrm{cond}}(s,t)-P_{\mathrm{cond}}(s+\Delta s,t)
+=-k a^2 (\frac{\partial T}{\partial s} (s,t) -\frac{\partial T}{\partial s}(s+\Delta s,t)
+\label{eq: Pcond}
+\end{equation}
+dividing both sides by $\Delta s$ gives:
+\begin{equation}
+\frac {P_f}{\Delta s}= k a^2 \frac{(\frac{\partial T}{\partial s} (s+\Delta s,t) -\frac{\partial T}{\partial s}(s,t)}{\Delta s}
+\end{equation}
+Taking the limit as $\Delta s\to 0$ gives:
+\begin{equation}
+\lim_{\Delta s \to 0}\frac{P_f}{\Delta s}= ka^2
+\frac{\partial}{\partial s}
+\left(\frac{\partial T}{\partial s}\right)
+=ka^2\frac{\partial^2 T}{\partial s^2}
+\end{equation}
+According the energy conservation, the heat accumulated is equal to the heat came into the system, therefore,
+\begin{equation}
+\dot {E} =-P_{air}+P_b+P_f
+\end{equation}
+divide both sides by $\Delta s$, according to ~\eqref{eq: Edot}, ~\eqref{eq: Pair}, ~\eqref{eq:Pb}, and ~\eqref{eq: Pcond}:
+\begin{equation}
+c_p \rho a^2 \frac{\partial T}{\partial t}
+=-h_{air} 3a (T(s,t)-T_e)+h_b a (T_b-T(s,t))+ka^2\frac{\partial^2 T}{\partial s^2}
+\end{equation}
+divide both side by $c_p\rho a^2$:
+\begin{equation}
+\frac{\partial T}{\partial t}
+= -\frac{3h_{air}}{c_p\rho a}(T-T_e)
+ +\frac{h_b}{c_p\rho a}(T_b-T)
+ +\frac{k}{c_p \rho}\frac{\partial^2 T}{\partial s^2}
+ \end{equation}
+
+\paragraph{growing domain and deposition condition}
+
+Let $L$ denote the total length of the  printing path and $l(t)$ the length of filament deposited by time $t$.
+The temperature equation applies only to $0<s<l(t)$ , where $s=0$ is the starting position of the printing path and $s=l(t)$ is the current deposition front.
+The temperature of newly deposited filament is assumed to equal the nozzle temperature $T_n(t)$:
+\begin{equation}
+T(l(t),t)= T_n(t),
+\qquad
+0<t<t_{\mathrm{end}}
+\end{equation}
+During printing, filament is assumed to be deposited continuously along the path. the speed of the print head along the path is 
+\begin{equation}
+v_p(t)=\sqrt{\dot{x}(t)^2+\dot{y}(t)^2}
+\end{equation}
+Allowing for a time-varying printing speed, the deposited length is 
+\begin{equation}
+l(t)=\int_0^tv_p(\tau)\,\mathrm{d}\tau,
+\qquad
+0\le t\le t_{\mathrm{end}}.
+\end{equation}
+Printing ends when $l(t_{\mathrm{end}})=L$.
+For $t>t_{\mathrm{end}}$, the deposited length remains $L$. 
+\paragraph{Boundary conditions during and after printing}
+
 
 \section{Finite State Machine}
 \subsection*{Q2.1: Filament Replacement}
-the event $C$ denotes a request to print a new colour, while the event $F$ indicates that the spool currently in use has run out of filament.\\Transition labels follow the format ``event/action''. The coordinates $(x_p,y_p)$ denote the wipe-tower location. The machine remains in its current state until the corresponding transition event occurs. Nozzle heating remains enabled during heating up and the return to the saved position.
+the event $C$ denotes a request to print a new colour, while the event $F$ indicates that the spool currently in use has run out of filament.
+\\Transition labels follow the format ``event/action''. 
+The coordinates $(x_p,y_p)$ denote the wipe-tower location. The machine remains in its current state until the corresponding transition event occurs. 
+Nozzle heating remains enabled during heating up and the return to the saved position.
 \begin{figure}[htbp]
     \centering
     \resizebox{\linewidth}{!}{%}
