@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.integrate import quad
+from scipy.integrate import quad, solve_ivp
 #1. parameters and input
 rho = 1200                    #filament density [kg/m^3]
 c_p = 1800                    #[J/(kg*K)]
@@ -18,7 +18,9 @@ omega = 2 * np.pi / 20.0      # angular frequency [rad/s]
 #1.2numerical paramters
 M = 40                        #number of cells
 l_eps = 1e-9                  #cell shorter than this value is not exist [m]
-
+rtol, atol = 1e-6, 1e-8
+tol_uniform = 0.05            #uniform ttemperature tolerance [K]
+max_cooling_time = 120.0      #longest cooling simulation [s]
 
 #1.3external inouts
 def T_nozzle (t):
@@ -51,7 +53,7 @@ def deposited_cell_lengths(t):
 def cell_status(l):
     active = l > l_eps
     full = l >= ds * (1 - 1e-9)
-    idx = np.where(active & ~full)[0]
+    idx = np.where( ~full)[0]
     growing = idx[0] if idx.size > 0 else None
     return active, full, growing
 
@@ -123,5 +125,26 @@ def cooling_rates(t, E):
     dE = Q.copy()
     return dE
 
- # 4printing and cooling integration
- # 5output
+# 4printing and cooling integration
+#4.1 initial condition
+E0 = np.zeros(M)
+#4.2 printing integration
+print_sol = solve_ivp (printing_rates, (0.0, t_end), E0,
+                       method = "Radau", rtol = rtol, atol = atol )
+#4.3 state after printing
+E_end = print_sol.y [:, -1].copy()
+#4.4 stopping condition
+def uniform(t,E):
+    T = T_e + E / (rho * c_p * a**2 * ds)
+    return np.max(abs(T-np.mean(T)))-tol_uniform   #the uniform temperature after printing
+uniform.terminal = True
+uniform.direction = -1
+#4.5 cooling integration
+cool_sol = solve_ivp(cooling_rates, (t_end, t_end+max_cooling_time),E_end,
+                     method = "Radau", events = uniform, 
+                     rtol = rtol, atol = atol)
+#4.6 cooling time 
+reached = cool_sol.t_events[0].size >0
+cooling_time = cool_sol.t_events[0][0]-t_end if reached else None
+
+# 5output
