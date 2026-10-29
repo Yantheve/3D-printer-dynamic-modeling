@@ -45,8 +45,15 @@ def deposited_cell_lengths(t):
     length = deposited_length(t)
     l = length - faces [:-1]
     l = np.clip (l, 0.0, ds)          # limit every length within 0 to ds
-    l_active = l [l>l_eps]
-    return l_active                   # take out active cells, leave empty cells     
+    return l               # take out active cells, leave empty cells     
+
+#2.2 which cells exist / are full / are growing
+def cell_status(l):
+    active = l > l_eps
+    full = l >= ds * (1 - 1e-9)
+    idx = np.where(active & ~full)[0]
+    growing = idx[0] if idx.size > 0 else None
+    return active, full, growing
 
 #3.0temperature derivative &dT/dt
 # 3.1 Heat exchange with the plate and ambient air
@@ -66,16 +73,55 @@ def starting_end_loss(T_first, l_first):
     )            #the conductive heat transfer rate into the face equals the convective heat-transfer rate from the face to the air
     return P_end_out
 
-
 #3.4 Energy input rate from incoming filament
 def growing_cell ( v_p, T_nozzle, T_e) :
     P_growing = rho * a**2 * v_p * c_p * (T_nozzle - T_e)
     return P_growing
-#3.5 (E->T) Temperature derivatives during printing
-deposited_cell_lengths
-cell_status
-T = T_e  + E / (
-    rho * c_p * a^2 * l
-)
+#3.5 (E->T) Energy derivatives during printing
+def printing_rates(t, E):
+    l = deposited_cell_lengths(t)
+    active, full, growing = cell_status(l)
 
-# 3.6 Temperature derivatives after path closure
+    T = np.full(M, T_nozzle(t))
+    T[active] = T_e + E[active] / (rho * c_p * a**2 * l[active])
+
+    Q = np.zeros(M)
+
+    Q[active] += plate_air_power(T[active], l[active])
+
+    for i in range(M - 1):
+        if active[i] and active[i + 1]:
+            P = conductive_power(T[i], T[i + 1], l[i], l[i + 1])
+            Q[i] -= P
+            Q[i + 1] += P
+
+    if active[0]:
+        Q[0] -= starting_end_loss(T[0], l[0])
+
+    dE = Q.copy()
+    if growing is not None:
+        dE[growing] += growing_cell(v_p(t), T_nozzle(t), T_e)
+
+    return dE
+
+# 3.6 Energy derivatives after path closure
+def cooling_rates(t, E):
+    l = np.full(M, ds)
+    T = T_e + E / (rho * c_p * a**2 * l)
+    Q = np.zeros(M)
+
+    Q += plate_air_power(T,l)
+
+    for i in range(M - 1):
+        P = conductive_power(T[i], T[i + 1], l[i], l[i + 1])
+        Q[i] -= P
+        Q[i + 1] += P
+
+    P = conductive_power(T[-1], T[0], l[-1], l[0])
+    Q[-1] -= P
+    Q[0] += P
+    dE = Q.copy()
+    return dE
+
+ # 4printing and cooling integration
+ # 5output
