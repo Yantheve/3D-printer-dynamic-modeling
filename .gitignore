@@ -1,0 +1,19 @@
+# python cache
+__pycache__/
+*.pyc
+
+#conda and virtual environments
+.venv/
+venv/
+.env
+
+# Jupter
+.ipynb_checkpoints/
+
+# Editor files
+.vscode/
+.spyproject/
+
+# Temporary files
+*/log
+
